@@ -6,7 +6,15 @@ const userSchema = mongoose.Schema({
     email: { type: String, required: true, lowercase: true, trim: true, match: /^\S+@\S+\.\S+$/ },  
     contact: { type: Number, required: true, validate: { validator: v => /^\d{10}$/.test(v), message: 'Contact must be a 10-digit number.' } },  
     role: { type: String, enum: ['superadmin', 'admin', 'employer', 'job-seeker'], required: true, default: 'job-seeker', lowercase: true, trim: true },
-    password: {type: String, required: true}
+    password: {type: String, required: true},
+    deviceInfos : [
+        {
+            fingerPrintId: { type: String },
+            browserName: { type: String },
+            ipAddress: { type: String },
+            recentLoggedTime: [{ type: Date}]
+        }
+    ]
 })
 
 const userModel = mongoose.model('Job-portel', userSchema)

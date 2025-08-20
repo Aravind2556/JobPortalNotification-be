@@ -5,7 +5,7 @@ const NotificationSchema = mongoose.Schema({
     userId: { type: String },
     title: { type: String },
     description: { type: String},
-    type: { type: String, enum: ['job-application', 'application-status', 'assistance-alert', 'system-alert'], lowercase: true, trim: true, default: 'system-alert'},
+    type: { type: String, enum: ['job-application', 'application-status', 'assistance-alert', 'system-alert','device-status'], lowercase: true, trim: true, default: 'system-alert'},
     isRead: { type: Boolean, default: false}
 },
     {
