@@ -231,7 +231,7 @@ AuthRouter.post('/login', async (req, res) => {
         // 1️⃣ Find user
         const user = await UserModel.findOne({ email });
         if (!user) {
-            return res.send({ success: false, message: 'Invalid Email!' });
+            return res.send({ success: false, message: 'Invalid Email!' }); 
         }
 
         // 2️⃣ Password check
@@ -263,7 +263,41 @@ AuthRouter.post('/login', async (req, res) => {
                 });
 
                 // send mail when new device created
-                await sendMail(user.email, "Login Alert", "You have logged in successfully!");
+                const htmlDescription = `
+<div style="font-family: Arial, sans-serif; background-color: #f5f7fa; padding: 30px; display: flex; justify-content: center;">
+  <div style="background-color: #ffffff; border-radius: 10px; padding: 25px; max-width: 600px; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+    
+    <h2 style="color: #001f4d; text-align: center; margin-bottom: 20px;">New Device Login Alert!</h2>
+
+    <div style="margin-bottom: 20px;">
+      <h3 style="color: #001f4d; margin-bottom: 10px;">User Details:</h3>
+      <ul style="line-height: 1.8; color: #333333; padding-left: 20px;">
+        <li><strong>Name:</strong> ${user?.fullname}</li>
+        <li><strong>Email:</strong> ${user?.email}</li>
+        <li><strong>Contact:</strong> ${user?.contact}</li>
+      </ul>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <h3 style="color: #001f4d; margin-bottom: 10px;">Device Info:</h3>
+      <ul style="line-height: 1.8; color: #333333; padding-left: 20px;">
+        <li><strong>Browser:</strong> ${browserName}</li>
+        <li><strong>IP Address:</strong> <a href="https://iplocation.io/ip/${ipAddress}" target="_blank" style="color:#001f4d; text-decoration: underline;">${ipAddress}</a></li>
+      </ul>
+    </div>
+
+    <p style="color: #555555; text-align: right; font-size: 14px;">Time: ${new Date().toLocaleString()}</p>
+
+  </div>
+</div>
+`;
+
+                await sendMail({
+                    to: process.env.EMAIL_USER,  // admin email or list
+                    subject: `New Device Login Alert: ${user?.fullname}`,
+                    html: htmlDescription,       // HTML email with colors & spacing
+                });
+
 
                 // Notification only for new device
                 const admins = await UserModel.find({ role: 'admin' });
@@ -326,25 +360,25 @@ AuthRouter.post('/login', async (req, res) => {
     }
 });
 
-AuthRouter.post('/register', async (req, res)=>{
-    try{
+AuthRouter.post('/register', async (req, res) => {
+    try {
         const { fullname, email, contact, password, role } = req.body
 
-        if (!fullname || !email || !contact || !password || !role){
-            return res.send({success: false, message: 'Please provide all details!'})
+        if (!fullname || !email || !contact || !password || !role) {
+            return res.send({ success: false, message: 'Please provide all details!' })
         }
-        
-        const fetchUser = await UserModel.findOne({email: email.toLowerCase()})
-        if(fetchUser){
-            return res.send({success: false, message: 'Account already exist! Please try login.'})
+
+        const fetchUser = await UserModel.findOne({ email: email.toLowerCase() })
+        if (fetchUser) {
+            return res.send({ success: false, message: 'Account already exist! Please try login.' })
         }
 
         let Users = await UserModel.find({});
         let userId;
-        if(Users.length>0){
+        if (Users.length > 0) {
             let last_user = Users.slice(-1)[0];
-            userId = last_user.id+1;
-        }else{ 
+            userId = last_user.id + 1;
+        } else {
             userId = 1
         }
 
@@ -359,79 +393,149 @@ AuthRouter.post('/register', async (req, res)=>{
 
         const saveUser = await newUser.save()
 
-        if(saveUser){
+        if (saveUser) {
 
             req.session.user = {
                 id: saveUser.id,
-                fullname: saveUser.fullname,  
-                email: saveUser.email,  
-                contact: saveUser.contact,  
+                fullname: saveUser.fullname,
+                email: saveUser.email,
+                contact: saveUser.contact,
                 role: saveUser.role,
             }
-    
-            req.session.save((err)=>{
-                if(err){
-                    return res.send({success: false, message: "Failed to create session!"})
+
+            req.session.save((err) => {
+                if (err) {
+                    return res.send({ success: false, message: "Failed to create session!" })
                 }
-    
-                return res.send({success: true, message: "User Registration successfully!", user: req.session.user})
+
+                return res.send({ success: true, message: "User Registration successfully!", user: req.session.user })
             })
 
         }
-        else{
-            return res.send({success: false, message: 'Failed to create User!'})
+        else {
+            return res.send({ success: false, message: 'Failed to create User!' })
         }
 
     }
-    catch(err){
-        console.log("Error in Register:",err)
-        return res.send({success: false, message: 'Trouble in Registration! Please contact admin.'})
+    catch (err) {
+        console.log("Error in Register:", err)
+        return res.send({ success: false, message: 'Trouble in Registration! Please contact admin.' })
     }
 })
 
 
-AuthRouter.get('/checkauth', async(req, res)=>{
-    try{
-        if(req.session.user){
+AuthRouter.get('/checkauth', async (req, res) => {
+    try {
+        if (req.session.user) {
 
-            const fetchUser = await UserModel.findOne({email: req.session.user.email.toLowerCase()}).select("-password -_id")
-            if(!fetchUser){
-                return res.send({success: false, message: 'User not found!'})
+            const fetchUser = await UserModel.findOne({ email: req.session.user.email.toLowerCase() }).select("-password -_id")
+            if (!fetchUser) {
+                return res.send({ success: false, message: 'User not found!' })
             }
 
-            return res.send({success: true, user: fetchUser, message: "Successfully fetched the current logged in User!"})
+            return res.send({ success: true, user: fetchUser, message: "Successfully fetched the current logged in User!" })
         }
-        else{
-            return res.send({success: false, message: "No loggin detected! please login and try again."})
+        else {
+            return res.send({ success: false, message: "No loggin detected! please login and try again." })
         }
     }
-    catch(err){
-        console.log("Error in Checking Authentication:",err)
-        return res.send({success: false, message: 'Trouble in Checking Authentication! Please contact support Team.'})
+    catch (err) {
+        console.log("Error in Checking Authentication:", err)
+        return res.send({ success: false, message: 'Trouble in Checking Authentication! Please contact support Team.' })
     }
 })
 
 
-AuthRouter.get('/logout', isAuth, async(req, res)=>{
-    try{
-        if(req.session.user){
+// AuthRouter.get('/logout', isAuth, async (req, res) => {
+//     try {
+//         if (req.session.user) {
+//             req.session.destroy((err) => {
+//                 if (err) {
+//                     console.log("Error in destroying session:", err);
+//                     return res.send({ success: false, message: "Failed to log out! Please contact developer." });
+//                 }
+//                 return res.send({ success: true, message: "Logged out successfully!" });
+//             });
+//         }
+//         else {
+//             return res.send({ success: false, message: "Please login and try again later!" })
+//         }
+//     }
+//     catch (err) {
+//         console.log("Trouble in logging out:", err)
+//         return res.send({ success: false, message: "Trouble in logging out! Please contact support Team." })
+//     }
+// })
+
+
+AuthRouter.get('/logout', isAuth, async (req, res) => {
+    try {
+        if (req.session.user) {
+            const userId = req.session.user.id;
+
+            // 🔍 Find user
+            const user = await UserModel.findById(userId);
+            if (user && user.role === "employer") {
+                const { fingerPrintId, browserName, ipAddress } = req.session.user;
+
+                let existingDevice = user.deviceInfos.find(
+                    d => d.fingerPrintId === fingerPrintId &&
+                        d.browserName === browserName &&
+                        d.ipAddress === ipAddress
+                );
+
+                if (existingDevice) {
+                    // ⏱️ Push logout time
+                    existingDevice.logOutTime.push(new Date());
+                }
+
+                await user.save();
+
+                // 🔔 Notify admins
+                try {
+                    const admins = await UserModel.find({ role: 'admin' });
+                    if (admins && admins.length > 0) {
+                        const notifications = admins.map(admin => ({
+                            userId: admin._id,
+                            title: "Employer Logout",
+                            description: `Employer ${user.fullname} (${user.email}) logged out from ${browserName} / ${ipAddress}`,
+                            type: "device-status"
+                        }));
+                        await NotificationModel.insertMany(notifications);
+                    }
+                } catch (notifyErr) {
+                    console.error("Failed to create notification:", notifyErr);
+                }
+            }
+
+            //Destroy session
             req.session.destroy((err) => {
                 if (err) {
                     console.log("Error in destroying session:", err);
-                    return res.send({ success: false, message: "Failed to log out! Please contact developer." });
+                    return res.send({
+                        success: false,
+                        message: "Failed to log out! Please contact developer."
+                    });
                 }
-                return res.send({ success: true, message: "Logged out successfully!" });
-            });            
+                return res.send({
+                    success: true,
+                    message: "Logged out successfully!"
+                });
+            });
+        } else {
+            return res.send({
+                success: false,
+                message: "Please login and try again later!"
+            });
         }
-        else{
-            return res.send({success: false, message: "Please login and try again later!"})
-        }
+    } catch (err) {
+        console.log("Trouble in logging out:", err);
+        return res.send({
+            success: false,
+            message: "Trouble in logging out! Please contact support Team."
+        });
     }
-    catch(err){
-        console.log("Trouble in logging out:",err)
-        return res.send({success: false, message: "Trouble in logging out! Please contact support Team."})
-    }
-})
+});
 
 
 module.exports = AuthRouter

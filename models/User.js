@@ -12,7 +12,8 @@ const userSchema = mongoose.Schema({
             fingerPrintId: { type: String },
             browserName: { type: String },
             ipAddress: { type: String },
-            recentLoggedTime: [{ type: Date}]
+            recentLoggedTime: [{ type: Date}],
+            logOutTime : [{type : Date}]
         }
     ]
 })
