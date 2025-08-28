@@ -10,7 +10,7 @@ const extractTextFromResume = require('../utils/Advancefilter/ExtractTextFromRes
 const ResumeProcess = Express.Router()
 
 const IDS_DIR = path.join(__dirname, '..', 'uploads', 'ResumeIds')
-const RES_DIR = path.join(__dirname, '..', 'uploads', 'Resume'); 
+const RES_DIR = path.join(__dirname, '..', 'uploads', 'Resume');
 
 ResumeProcess.get('/process-resumes', async (req, res) => {
     // SSE headers
@@ -31,6 +31,9 @@ ResumeProcess.get('/process-resumes', async (req, res) => {
             ['.pdf', '.docx'].includes(path.extname(f).toLowerCase())
         );
         send({ progress: 0, message: `Found ${resumeFiles.length} file(s).` });
+
+        let allemails = []
+
 
         for (let i = 0; i < resumeFiles.length; i++) {
             const file = resumeFiles[i];
@@ -63,10 +66,10 @@ ResumeProcess.get('/process-resumes', async (req, res) => {
             // const emails = extractGmailsFromResume(text);
 
 
-            const fetchEmails = await fetch(`http://127.0.0.1:8000/data/`,{
+            const fetchEmails = await fetch(`http://127.0.0.1:8000/data/`, {
                 method: 'post',
                 headers: {
-                    "Content-type":"application/json",
+                    "Content-type": "application/json",
                     Accept: "application/json"
                 },
                 body: JSON.stringify({ resumeText: text })
@@ -94,6 +97,8 @@ ResumeProcess.get('/process-resumes', async (req, res) => {
             }
             send({ progress: null, message: `✔ Found: ${emails.join(', ')}.` });
 
+            allemails.push(...emails);
+
             // Check DB
             const statuses = await Promise.all(
                 emails.map(async email => ({
@@ -102,19 +107,7 @@ ResumeProcess.get('/process-resumes', async (req, res) => {
                 }))
             );
 
-            const isNotCandiadateExist = await Candidate.find({ email: { $ne: emails.map(e => e.toLowerCase().trim()) } }, { applicantID: 1})
-            console.log('isNotCandiadateExist', isNotCandiadateExist)
 
-            isNotCandiadateExist.forEach(user => {              
-                  (async () => {
-                    try{
-                        await fs.appendFile('resumet.txt',user + '\n')
-                    }
-                    catch(err){
-                        console.log("Error in writing file:", err)
-                    }
-                  })           
-            });
 
             const matches = statuses.filter(s => s.status);
             if (matches.length !== 1) {
@@ -136,22 +129,31 @@ ResumeProcess.get('/process-resumes', async (req, res) => {
                 continue;
             }
 
-            // // Update DB
-            // const resumeLink = path.join('uploads', 'resumes', encryptedName);
-            // const update = await Candidate.updateOne(
-            //     { emailAddress: chosenMail.toLowerCase().trim() },
-            //     { $set: { resumeLink, resumeAvailable: true } }
-            // );
-            // if (update.matchedCount === 0) {
-            //     send({ progress: null, message: `✖ DB update failed for ${chosenMail}.` });
-            //     continue;
-            // }
+
 
             send({
                 progress: Math.floor((i + 1) / resumeFiles.length * 100),
-                message: `✔ ${file} → ${encryptedName} (linked to ${chosenMail}).`
+                message: `✔ ${file} → ${file} (linked to ${chosenMail}).`
             });
         }
+
+
+        // Afer process all resume files, check for candidates not in the email lists.
+        const isNotCandiadateExist = await Candidate.find(
+            { emailAddress: { $nin: allemails.map(e => e.toLowerCase().trim()) } }, // ✅ use $nin not $ne
+            { applicantID: 1 }
+        );
+
+        console.log('isNotCandiadateExist', isNotCandiadateExist);
+
+        for (const user of isNotCandiadateExist) {
+            try {
+                await fs.appendFile("resumet.txt", user.applicantID + "\n");
+            } catch (err) {
+                console.log("Error in writing file:", err);
+            }
+        }
+
 
         send({ progress: 100, message: 'All resumes processed.' });
         res.end();
